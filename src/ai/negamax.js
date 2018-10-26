@@ -10,53 +10,66 @@ export default function (board) {
     point: null,
     score: -Infinity
   }
-  var points = evaluatePoints(board, boardConfig.chessType)
+  var bestArr = []
+  var points = evaluatePoints(board, boardConfig.aiChess)
   for (let i = 0, len = points.length; i < len; i++) {
     let point = points[i]
-    board.put(point.row, point.col, STR_NUM[boardConfig.chessType])
-    let score = minimax(board, boardConfig.chessType, _deep, -1, alpha, beta)
+    board.put(point.row, point.col, boardConfig.aiChess)
+    let score = minimax(board, boardConfig.aiChess, _deep, -1, alpha, beta)
+    board.remove(point.row, point.col)
     if (score > best.score) {
+      bestArr = []
       alpha = score
       best.score = score
       best.point = point
     }
-    board.remove(point.row, point.col)
+    if (score == best.score) {
+      bestArr.push({
+        point,
+        score
+      })
+    }
   }
-  return best
+  let bestArrLen = bestArr.length
+  let index = Math.floor(Math.random() * bestArrLen)
+  if (bestArrLen > 0) {
+    return bestArr[index]
+  } else {
+    return best
+  }
 }
-
-var minimax = function (board, point_type_str, deep, role, _alpha, _beta) {
+var count = 0
+var minimax = function (board, currentChess, deep, role, _alpha, _beta) {
   if (deep <= 0) {
     let score = evaluateSituation(board)
+    count++
     return score
   }
-
   var alpha = _alpha, beta = _beta
   var _deep = deep - 1
-  var point_type_rival = point_type_str == 'BLACK' ? 'WHITE' : 'BLACK'
+  var rivalChess = currentChess == STR_NUM.BLACK ? STR_NUM.WHITE : STR_NUM.BLACK
   var best = role > 0 ? -Infinity : Infinity
-  var points = evaluatePoints(board, point_type_rival)
+  var points = evaluatePoints(board, rivalChess)
   if (points.length <= 0) {
     throw new Error('无合适的落子位置')
   }
   for (let i = 0, len = points.length; i < len; i++) {
     let point = points[i]
-    board.put(point.row, point.col, STR_NUM[point_type_rival])
-    let score = minimax(board, point_type_rival, _deep, -role, alpha, beta)
-
-    if (role > 0 && score < alpha || role < 0 && score > beta) { // 剪枝
-      board.remove(point.row, point.col)
+    board.put(point.row, point.col, rivalChess)
+    let score = minimax(board, rivalChess, _deep, -role, alpha, beta)
+    board.remove(point.row, point.col)
+    if (role < 0 && score < alpha || role > 0 && score > beta) { // 剪枝
+      best = score
       break
     }
-    if (score > best && role > 0) {
+    if (role > 0 && score > best) {
       alpha = score
       best = score
     }
-    if (score < best && role < 0) {
+    if (role < 0 && score < best) {
       beta = score
       best = score
     }
-    board.remove(point.row, point.col)
   }
   return best
 }

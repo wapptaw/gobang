@@ -1,13 +1,15 @@
+import {STR_NUM} from './chess_map'
+
 export default {
   sente: 'COMPUTED', // 先手
   deep: 4, // 思考层数
 
-  get chessType () {
+  get aiChess () {
     switch (this.sente) {
       case 'COMPUTED':
-        return 'BLACK'
+        return STR_NUM.BLACK
       case 'PERSON':
-        return 'WHITE'
+        return STR_NUM.WHITE
       default:
         throw new Error('先手信息错误')
     } 
