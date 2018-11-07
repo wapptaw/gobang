@@ -57,7 +57,8 @@ var pointList = function (board, currentChess, row, col) {
     after: [currentChess]
   }
   var left = {
-    berfore: [STR_NUM.EMPTY]
+    berfore: [STR_NUM.EMPTY],
+    after: [currentChess]
   }
   var right = {
     berfore: [STR_NUM.EMPTY],

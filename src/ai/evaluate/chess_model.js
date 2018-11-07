@@ -28,7 +28,7 @@ var chessModel = function (array, currentChess, deep) { // 判断棋型
   var _deep = deep - 1 // deep值可以限制最大增子数
   var best = Infinity
 
-  var winFive = isWinFive(array.join(''), currentChess) // 判断连五
+  var winFive = isWinFive(array, currentChess) // 判断连五
   if (winFive) {
     return 0
   }
@@ -55,7 +55,6 @@ var chessModel = function (array, currentChess, deep) { // 判断棋型
 
 var fourToFive = function (array, currentChess) { // 四连五
   var count = 0
-
   for (let i = 0, len = array.length; i < len; i++) {
     if (array[i] == STR_NUM.EMPTY) {
       array[i] = currentChess
