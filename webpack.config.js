@@ -2,6 +2,7 @@ const path = require('path')
 const webpack = require('webpack');
 const CleanWebpackPlugin = require('clean-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const VueLoaderPlugin = require('vue-loader/lib/plugin')
 
 module.exports = {
   mode: 'development',
@@ -20,13 +21,17 @@ module.exports = {
         use: ['style-loader', 'css-loader', 'sass-loader']
       },
       {
-          test: /\.(png|svg|jpg|gif)$/,
-          use: 'file-loader'
+        test: /\.(png|svg|jpg|gif)$/,
+        use: 'file-loader'
+      },
+      {
+        test: /\.vue$/,
+        use: 'vue-loader'
       }
     ]
   },
   resolve: {
-    extensions: ['.js', 'json']
+    extensions: ['.js', '.json', '.vue']
   },
   plugins: [
     new CleanWebpackPlugin(['dist']),
@@ -36,7 +41,8 @@ module.exports = {
         template: 'index.html'
       }
     ),
-    new webpack.HotModuleReplacementPlugin()
+    new webpack.HotModuleReplacementPlugin(),
+    new VueLoaderPlugin()
   ],
   optimization: {
     splitChunks: {

@@ -2,7 +2,7 @@ import {STR_NUM} from './chess_map'
 
 export default {
   sente: 'COMPUTED', // 先手
-  deep: 4, // 思考层数
+  deep: 1, // 思考层数
 
   get aiChess () {
     switch (this.sente) {

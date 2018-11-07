@@ -38,7 +38,7 @@ export default class Matrix {
     } else {
       r = diff
       c = 0
-      len = this.length - r
+      len = this.length
     }
     for (let i = r, j = c; i < len; i++, j++) {
       line.push(this.readPoint(i, j))

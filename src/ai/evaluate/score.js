@@ -149,7 +149,6 @@ var sortAll = function (n) {
     if (n == 0) {
       list.push(arr)
     }
-
     for (let i = 1; i <= n; i++) {
       listGet(n - i, arr.concat(i))
     }
