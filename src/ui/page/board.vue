@@ -3,34 +3,42 @@
     @click="windowClick()">
     <header class="title">五子棋</header>
     <div class="board">
-      <section class="board-left">
-        <ul class="sente">
-          <li v-for="(item, index) in playerMessage" :key="index" class="sente-list">
-            <div :class="'mark-' + index" class="mark"></div>
-            <span class="sente-name">{{item}}</span>
-          </li>
-        </ul>
-        <div class="difficulty-setting">
-          <div class="title">难度：</div>
-          <div class="diff">
+      <section class="game-chunk board-left">
+        <div class="left-align">
+          <ul class="sente">
+            <li v-for="(item, index) in playerMessage" :key="index" class="sente-list">
+              <div :class="'mark-' + index" class="mark"></div>
+              <span class="sente-name">{{item}}</span>
+            </li>
+          </ul>
+          <div class="difficulty-setting">
+            <div class="title">难度：</div>
+            <div class="diff">
+              <div
+                class="diff-result"
+                @click.stop="optionShow">{{diffSelected.title}}</div>
+              <ul
+                class="diff-ul"
+                :class="{diffShow: diffSelected.optionClose}">
+                <li 
+                  v-for="(item, index) in difficulty"
+                  :key="index"
+                  :value="item"
+                  class="diff-list"
+                  :class="{optionSelected: index == diffSelected.selectedIndex}"
+                  @click.stop="diffSelecte(index)">{{item.title}}</li>
+              </ul>
+            </div>
+          </div>
+          <div class="sente-select">
+            <div class="title">先手：</div>
             <div
-              class="diff-result"
-              @click.stop="optionShow()">{{diffSelected.title}}&gt;</div>
-            <ul
-              class="diff-ul"
-              :class="{diffShow: diffSelected.optionClose}">
-              <li 
-                v-for="(item, index) in difficulty"
-                :key="index"
-                :value="item"
-                class="diff-list"
-                :class="{optionSelected: index == diffSelected.selectedIndex}"
-                @click.stop="diffSelecte(index)">{{item.title}}</li>
-            </ul>
+              class="sente-message"
+              @click="senteSelect">{{senteName}}</div>
           </div>
         </div>
       </section>
-      <section class="board-center">
+      <section class="game-chunk board-center">
         <img src="../static/img/chessboard.png" alt="board" class="board-img">
         <ul class="chess-ul">
           <li
@@ -42,13 +50,21 @@
                 v-for="(item_col, index_col) in item_row"
                 :key="index_col"
                 class="chess-row-li"
-                :class="{chessBlack: item_row[index_col] == STR_NUM.BLACK, chessWhite: item_row[index_col] == STR_NUM.WHITE}"
-                @click="personPlayChess(index_row, index_col)"></li>
+                :class="{
+                  chessBlack: item_row[index_col] == STR_NUM.BLACK,
+                  chessWhite: item_row[index_col] == STR_NUM.WHITE,
+                  highlight: index_row == highlightPos[0] && index_col == highlightPos[1],
+                  flicker: isFlickery(index_row, index_col)
+                }"
+                @click="personPlayChess(index_row, index_col)">
+              </li>
             </ul>
           </li>
         </ul>
         <div class="bottom-button">
-          <div class="button undo">悔棋</div>
+          <div
+            class="button undo"
+            @click="revocation">悔棋</div>
           <div
             class="button start"
             @click="gameStart">开始</div>
@@ -58,31 +74,26 @@
         </div>
         <transition name="logo-scale">
           <div
-            v-if="startLogo"
-            class="start-logo">开始</div>
-        </transition>
-        <transition name="logo-scale">
-          <div
-            v-if="endLogo"
-            class="start-logo">认输</div>
+            v-if="pupup"
+            class="start-logo">{{gameResult}}</div>
         </transition>
       </section>
-      <section class="board-right">
-        <div class="game-time">
-          <h4>本局计时：</h4>
-          <div>{{current.boardTime}}</div>
+      <section class="game-chunk board-right">
+        <div class="right-option game-time">
+          <h4 class="right-title">本局计时：</h4>
+          <div class="right-message">{{current.boardTime}}</div>
         </div>
-        <div class="deep">
-          <h4>步骤统计：</h4>
-          <div>{{current.step}}</div>
+        <div class="right-option step">
+          <h4 class="right-title">步骤统计：</h4>
+          <div class="right-message">{{current.step}}</div>
         </div>
-        <div>
-          <h4>当前局势：</h4>
-          <div>{{current.boardScore}}</div>
+        <div class="right-option current-score">
+          <h4 class="right-title">当前局势：</h4>
+          <div class="right-message">{{current.boardScore}}</div>
         </div>
-        <div>
-          <h4>本步耗时：</h4>
-          <div>{{current.stepTime}}</div>
+        <div class="right-option step-time">
+          <h4 class="right-title">本步耗时：</h4>
+          <div class="right-message">{{current.stepTime}}</div>
         </div>
       </section>
     </div>
@@ -96,7 +107,7 @@ import Matrix from '../../ai/matrix'
 import {STR_NUM, NUM_STR} from '../../ai/config/chess_map'
 import negamax from '../../ai/negamax'
 import score from '../../ai/evaluate/score'
-import evaluateSituation from '../../ai/evaluate/evaluate_situation'
+import isWin from '../../ai/evaluate/isWin'
 
 export default {
   name: 'board',
@@ -118,11 +129,11 @@ export default {
         selectedIndex: 0,
         optionClose: true
       },
+      sente: boardConfig.sente, // 先手
       myBoard: [], // 棋盘对象
       myBoardMatrix: [],
       STR_NUM,
-      startLogo: false, // 开始logo
-      endLogo: false, // 认输logo
+      pupup: false, // 弹窗
       start: false, // 开始
       current: { // 当前信息
         chess: 0,
@@ -132,18 +143,34 @@ export default {
         boardScoreArr: null, // 单行得分数组
         boardScore: 0
       },
+      stepRecord: [], // 保存所有步骤
       stepTimeStart: 0, // 当前步开始
-      stepTimeEnd: 0 // 当前步结束
+      stepTimeEnd: 0, // 当前步结束
+      highlightPos: [], // 当前高亮棋子
+      winner: 0, // 胜利者
+      winPoints: [], // 连五棋子列表
+      gameResult: '' // 游戏结果
     }
   },
 
   computed: {
     playerMessage () {  // 先手预设
-      return boardConfig.sente == 'COMPUTED' ? ['电脑', '我'] : ['我', '电脑']
+      return this.sente == 'COMPUTED' ? ['电脑', '我'] : ['我', '电脑']
     },
 
-    chessColorVal () { // 棋手棋色值
-      switch (boardConfig.sente) {
+    senteName () { // 先手
+      switch (this.sente) {
+        case 'COMPUTED':
+          return '电脑'
+        case 'PERSON':
+          return '我'
+        default:
+          throw new Error('先手信息出错')
+      }
+    },
+
+    chess () { // 棋手棋子类型
+      switch (this.sente) {
         case 'COMPUTED':
           return {
             COMPUTED: STR_NUM.BLACK,
@@ -156,25 +183,6 @@ export default {
           }
         default:
           throw new Error('先手信息错误')
-      }
-    }
-  },
-
-  watch: {
-    start (v) { // 监听开始状况
-      if (v) {
-        this.chessTime()
-        this.computedPlayChess()
-      } else {
-        //
-      }
-    },
-
-    'current.chess' (val) { // 监听当前棋手
-      if (val == this.chessColorVal.COMPUTED) {
-        setTimeout(() => {
-          this.computedPlayChess()
-        }, 1000)
       }
     }
   },
@@ -214,19 +222,26 @@ export default {
       this.diffSelected.optionClose = true
     },
 
-    boardInit () { // 棋盘初始化
-      this.myBoard = new Matrix(15)
-      this.myBoardMatrix = this.myBoard.matrix
-      switch (boardConfig.sente) {
+    senteSelect () { // 先手选择
+      if (this.start) return
+      switch (this.sente) {
         case 'COMPUTED':
-          this.current.chess = STR_NUM.BLACK
+          boardConfig.sente = 'PERSON'
+          this.sente = 'PERSON'
           break
         case 'PERSON':
-          this.current.chess = STR_NUM.WHITE
+          boardConfig.sente = 'COMPUTED'
+          this.sente = 'COMPUTED'
           break
         default:
           throw new Error('先手信息出错')
       }
+    },
+
+    boardInit () { // 棋盘初始化
+      this.myBoard = new Matrix(15)
+      this.myBoardMatrix = this.myBoard.matrix
+      this.current.chess = STR_NUM.BLACK
       this.current.step = 0
       this.current.boardTime = '00 : 00 : 00'
       this.current.stepTime = 0
@@ -238,51 +253,144 @@ export default {
         right: []
       }
       this.current.boardScore = 0
+      this.highlightPos = []
+      this.winPoints = []
+      this.stepRecord = []
     },
 
     gameStart () { // 游戏开始
       if (this.start) return
-      this.startLogo = true
+      this.pupup = true
+      this.gameResult = '开始'
       this.boardInit()
       setTimeout(() => {
-        this.startLogo = false
+        this.pupup = false
         setTimeout(() => {
           this.start = true
           this.stepTimeStart = new Date()
+          this.chessTime()
+          this.computedPlayChess()
         }, 500)
       }, 1000)
     },
 
-    gameEnd () { // 认输
+    gameEnd () { // 游戏结束
       if (this.start) {
-        this.endLogo = true
+        switch (this.winner) {
+          case this.chess.COMPUTED:
+            this.gameResult = '你输了'
+            break
+          case this.chess.PERSON:
+            this.gameResult = '你赢了'
+            break
+          case 0:
+            this.gameResult = '认输'
+            break
+          default:
+            throw new Error('输赢信息出错')
+        }
+        this.pupup = true
         setTimeout(() => {
-          this.endLogo = false
+          this.pupup = false
           this.start = false
         }, 1000)
       }
     },
 
+    revocation () { // 悔棋
+      if (this.start && this.chess.PERSON == this.current.chess && this.current.step > 2) {
+        let pointLast = this.stepRecord[this.stepRecord.length - 1]
+        let pointSecondLast = this.stepRecord[this.stepRecord.length - 2]
+        let pointThirdLast = this.stepRecord[this.stepRecord.length - 3]
+        this.myBoard.remove(pointLast[0], pointLast[1])
+        this.myBoard.remove(pointSecondLast[0], pointSecondLast[1])
+        this.highlightPos = [pointThirdLast[0], pointThirdLast[1]]
+        this.boardScoreGet(pointLast[0], pointLast[1])
+        this.boardScoreGet(pointSecondLast[0], pointSecondLast[1])
+        this.current.step -= 2
+        this.stepRecord.splice(-2, 2)
+      }
+    },
+
+    winOrLose (row, col) { // 输赢结果
+      let winMes = isWin(this.myBoard, row, col, this.current.chess)
+      if (winMes.result) {
+        this.winner = this.current.chess
+        this.winPoints = winMes.winPoints
+        this.gameEnd()
+      }
+    },
+
+    isFlickery(row, col) { // 连五闪烁
+      if (this.winPoints.length > 0) {
+        for (let v of this.winPoints) {
+          if (row == v[0] && col == v[1]) {
+            return true
+          }
+        }
+      }
+      return false
+    },
+
     personPlayChess (row, col) { // 人下子
-      if (this.start && this.current.chess == this.chessColorVal.PERSON && this.myBoard.readPoint(row, col) == STR_NUM.EMPTY) {
+      if (this.start && this.current.chess == this.chess.PERSON && this.myBoard.readPoint(row, col) == STR_NUM.EMPTY) {
         this.myBoard.put(row, col, this.current.chess)
+        this.stepRecord.push([row, col])
+        this.highlightPos = [row, col]
         this.boardScoreGet(row, col)
         this.stepEnd()
+        this.winOrLose(row, col)
+        this.chessSwitch(this.current.chess) // 切换棋色
+        setTimeout(() => { // 切换为电脑下子
+          this.computedPlayChess()
+        }, 1000)
       }
     },
 
     computedPlayChess () { // 电脑下子
-      if (this.start && this.current.chess == this.chessColorVal.COMPUTED) {
+      if (this.start && this.current.chess == this.chess.COMPUTED) {
+        let row = 0, col = 0
         if (this.current.step == 0) {
           let center = Math.floor((this.myBoard.length - 1) / 2)
-          this.myBoard.put(center, center, this.current.chess)
-          this.boardScoreGet(center, center)
+          row = col = center
+        } else if (this.current.step == 1 && this.sente == 'PERSON') {
+          let firstStep = this.stepRecord[0]
+          let ablePoints = []
+          let boardLen = this.myBoard.length
+          for (let i = 1; i <= 2; i++) {
+            let dirKeyArr = [
+              [firstStep[0] - i, firstStep[1]],
+              [firstStep[0] + i, firstStep[1]],
+              [firstStep[0], firstStep[1] - i],
+              [firstStep[0], firstStep[1] + i],
+              [firstStep[0] - i, firstStep[1] - i],
+              [firstStep[0] + i, firstStep[1] + i],
+              [firstStep[0] - i, firstStep[1] + i],
+              [firstStep[0] + i, firstStep[1] - i]
+            ]
+            for (let val of dirKeyArr) {
+              if (val[0] >= 0 && val[1] >= 0 && val[0] < boardLen && val[1] < boardLen && this.myBoard.readPoint(val[0], val[1]) == STR_NUM.EMPTY) {
+                ablePoints.push(val)
+              }
+            }
+          }
+          let len = ablePoints.length - 1
+          let index = Math.floor(len * Math.random())
+          let point = ablePoints[index]
+          row = point[0]
+          col = point[1]
         } else {
           let pointMes = negamax(this.myBoard, this.current.boardScoreArr, this.current.boardScore)
-          this.myBoard.put(pointMes.point.row, pointMes.point.col, this.current.chess)
-          this.boardScoreGet(pointMes.point.row, pointMes.point.col)
+          row = pointMes.point.row
+          col = pointMes.point.col
         }
+        this.myBoard.put(row, col, this.current.chess)
+        this.stepRecord.push([row, col])
+        this.highlightPos = [row, col]
+        this.boardScoreGet(row, col)
         this.stepEnd()
+        this.winOrLose(row, col)
+        this.chessSwitch(this.current.chess)
       }
     },
 
@@ -337,7 +445,6 @@ export default {
 
     stepEnd () { // 单步结束操作
       this.current.step++
-      this.chessSwitch(this.current.chess)
       this.stepTimeEnd = new Date()
       this.current.stepTime = (this.stepTimeEnd - this.stepTimeStart) / 1000 + 's'
       this.stepTimeStart = this.stepTimeEnd
@@ -373,7 +480,7 @@ export default {
     },
 
     scoreDiff (arr) { // 分数差
-      return score(arr, this.chessColorVal.COMPUTED) - score(arr, this.chessColorVal.PERSON)
+      return score(arr, this.chess.COMPUTED) - score(arr, this.chess.PERSON)
     }
   }
 }
@@ -386,65 +493,106 @@ export default {
     text-align: center;
   }
   .board {
-    display: flex;
-    justify-content: center;
+    text-align: center;
+    .game-chunk {
+      display: inline-block;
+      vertical-align: top;
+    }
+    .board-left, .board-right {
+      width: 2rem;
+    }
     .board-left {
-      .sente {
-        .sente-list {
-          .mark {
-            width: .5rem;
-            height: .2rem;
-            display: inline-block;
-            vertical-align: middle;
-          }
-          .mark-0 {
-            background-color: #000;
-            border: 1px solid #fff;
-          }
-          .mark-1 {
-            background-color: #fff;
-            border: 1px solid #000;
-          }
-          .sente-name {
-            font-size: .15rem;
-            color: #525252;
-          }
-        }
-      }
-      .difficulty-setting {
-        .title {
-          font-size: .16rem;
-          color: #333333;
-          display: inline-block;
-        }
-        .diff {
-          display: inline-block;
-          position: relative;
-          .diff-result {
-            width: .6rem;
-            height: .25rem;
-            line-height: .25rem;
-            border: 1px solid #5f5f5f;
-            color: #585858;
-          }
-          .diff-ul {
-            border: 1px solid #689be9;
-            border-top: none;
-            position: absolute;
-            .diff-list {
+      margin-top: .5rem;
+      .left-align {
+        width: 1rem;
+        text-align: left;
+        margin-left: 1.1rem;
+        .sente {
+          .sente-list {
+            .mark {
+              width: .4rem;
+              height: .15rem;
+              display: inline-block;
+              vertical-align: middle;
+              box-sizing: border-box;
+            }
+            .mark-0 {
+              background-color: #000;
+            }
+            .mark-1 {
+              background-color: #fff;
+              border: 1px solid #000;
+            }
+            .sente-name {
               font-size: .12rem;
-              color: #464646;
-              width: .6rem;
+              color: #525252;
+            }
+          }
+        }
+        .difficulty-setting {
+          margin-top: .2rem;
+          .title {
+            font-size: .13rem;
+            color: #333333;
+            display: inline-block;
+          }
+          .diff {
+            display: inline-block;
+            position: relative;
+            .diff-result {
+              width: .4rem;
               height: .2rem;
               line-height: .2rem;
+              font-size: .13rem;
+              border: 1px solid #5f5f5f;
+              box-sizing: border-box;
+              color: #585858;
+              padding-left: .02rem;
+              user-select: none;
+              text-align: left;
             }
-            .optionSelected {
-              background-color: #2b88be;
-              color: #fff;
+            .diff-ul {
+              border: 1px solid #689be9;
+              box-sizing: border-box;
+              border-top: none;
+              position: absolute;
+              width: .4rem;
+              .diff-list {
+                font-size: .12rem;
+                color: #464646;
+                height: .2rem;
+                line-height: .2rem;
+                padding-left: .02rem;
+                user-select: none;
+                text-align: left;
+              }
+              .optionSelected {
+                background-color: #2b88be;
+                color: #fff;
+              }
+            }
+            .diffShow {
+              display: none;
             }
           }
-          .diffShow {
-            display: none;
+        }
+        .sente-select {
+          margin-top: .2rem;
+          .title, .sente-message {
+            font-size: .13rem;
+            color: #333;
+            display: inline-block;
+          }
+          .sente-message {
+            width: .35rem;
+            height: .18rem;
+            line-height: .18rem;
+            border: 1px solid #b4b4b4;
+            border-radius: 5px;
+            text-align: center;
+            color: #f0f0f0;
+            background-color: #c063eb;
+            user-select: none;
           }
         }
       }
@@ -453,9 +601,7 @@ export default {
       position: relative;
       width: 588px;
       height: 588px;
-      .board-img {
-        //
-      }
+      margin: 0 .2rem;
       .chess-ul {
         position: absolute;
         left: 0;
@@ -481,6 +627,12 @@ export default {
             .chessWhite {
               background-color: #fff;
             }
+            .highlight {
+              box-shadow: 0 0 5px 3px #e74848;
+            }
+            .flicker {
+              animation: flicker .5s ease-in 1.5s infinite alternate;
+            }
           }
         }
       }
@@ -498,47 +650,66 @@ export default {
           flex: auto;
           text-align: center;
           color: #ffffff;
-        }
-        .undo {
-          //
+          user-select: none;
         }
         .start {
           border-left: 1px solid #fff;
           border-right: 1px solid #fff;
           background-color: #47ca88;
         }
-        .over {
-          //
-        }
       }
       .start-logo {
         font-size: .6rem;
-        width: 1.2rem;
-        height: .6rem;
-        line-height: .6rem;
         color: #e42828;
         position: absolute;
-        top: 50%;
-        left: 50%;
-        margin-left: -.6rem;
-        margin-top: -.3rem;
+      }
+    }
+    .board-right {
+      margin-top: .3rem;
+      .right-option {
+        display: flex;
+        justify-content: flex-start;
+        margin: .2rem 0;
+        .right-title {
+          font-size: .14rem;
+          color: #525252;
+        }
+        .right-message {
+          font-size: .14rem;
+          color: #616060;
+        }
       }
     }
   }
-  .footer {
-    //
+  @keyframes flicker {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: .2;
+    }
   }
   .logo-scale-enter {
-    transform: scale(0, 0);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0, 0);
   }
   .logo-scale-enter-to {
-    transform: scale(1, 1);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1, 1);
   }
   .logo-scale-leave {
     opacity: 1;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1, 1);
   }
   .logo-scale-leave-to {
     opacity: 0;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1, 1);
   }
   .logo-scale-enter-active {
     transition: transform 1s ease;
@@ -547,4 +718,3 @@ export default {
     transition: opacity .5s ease;
   }
 </style>
-

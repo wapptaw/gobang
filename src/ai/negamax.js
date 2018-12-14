@@ -60,7 +60,6 @@ var minimax = function (board, currentChess, deep, role, _alpha, _beta, boardSco
   var _deep = deep - 1
   var rivalChess = currentChess == STR_NUM.BLACK ? STR_NUM.WHITE : STR_NUM.BLACK
   var best = role > 0 ? -Infinity : Infinity
-  let oldTime = new Date()
   var points = pointsGet(board, rivalChess)
   if (points.length <= 0) {
     throw new Error('无合适的落子位置')

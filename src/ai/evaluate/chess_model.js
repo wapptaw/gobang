@@ -58,8 +58,7 @@ var fourToFive = function (array, currentChess) { // 四连五
   for (let i = 0, len = array.length; i < len; i++) {
     if (array[i] == STR_NUM.EMPTY) {
       array[i] = currentChess
-      let str = array.join('')
-      let isFive = isWinFive(str, currentChess)
+      let isFive = isWinFive(array, currentChess)
       if (isFive) {
         count++
       }
@@ -77,9 +76,10 @@ var fourToFive = function (array, currentChess) { // 四连五
   }
 }
 
-var isWinFive = function (string, currentChess) { // 检测连五
-  var reg_five = new RegExp(`${currentChess}{5,}`)
-  if (reg_five.test(string)) {
+var isWinFive = function (array, currentChess) { // 检测连五
+  let str = array.join('')
+  let reg_five = new RegExp(`${currentChess}{5,}`)
+  if (reg_five.test(str)) {
     return true
   }
 }

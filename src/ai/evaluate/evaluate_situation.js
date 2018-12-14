@@ -4,6 +4,11 @@ import boardConfig from '../config/board_config'
 
 // 对更改后棋盘评分
 export default function (board, boardScoreArr, boardScore, amendPoints) {
+  /*
+    boardScoreArr 更新前的各行各列的分数列表
+    boardScore 更新前的局势分
+    amendPoints 更新了的点
+  */
   let validKey = {
     hor: [],
     ver: [],
