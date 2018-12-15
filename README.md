@@ -83,7 +83,7 @@ class Matrix {
 
 在下一步棋时，我们通常会观察四周是否有同样颜色的棋子，从而组成各种高分值的棋型。人是凭眼睛看的，而计算机就只能在棋盘上遍历了。我们分别遍历需要评分的点的水平、垂直、斜防线两边各四个点，然后判断组成的棋型，从而获取评分。
 
-![evaluate_point](./docImg/evaluatePoint.png)
+![evaluate_point](./docImg/evaluate_point.png)
 
 如图，以[7, 8]点为中心，分别向八个方向遍历，获取棋型，从而判断该点得分。
 
