@@ -1,5 +1,5 @@
 {
-  "name": "gobangv2",
+  "name": "gobang",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
